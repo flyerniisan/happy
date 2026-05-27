@@ -4,6 +4,7 @@
  */
 
 import { LineParser } from './LineParser';
+import { decodeGitPath } from './gitPath';
 
 export interface GitFileEntry {
     path: string;
@@ -50,13 +51,13 @@ export function parseStatusSummary(statusOutput: string): GitStatusSummary {
 
             const index = matches[1];
             const working_dir = matches[2];
-            let path = matches[3];
+            let path = decodeGitPath(matches[3]);
             let from: string | undefined;
 
             // Handle renamed files
             if (matches[4]) {
-                from = matches[3];
-                path = matches[4];
+                from = decodeGitPath(matches[3]);
+                path = decodeGitPath(matches[4]);
             }
 
             const entry: GitFileEntry = {

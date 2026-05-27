@@ -16,6 +16,7 @@ import { layout } from '@/components/layout';
 import { FileIcon } from '@/components/FileIcon';
 import { Shaker, ShakeInstance } from '@/components/Shaker';
 import { usePrefetchFileContents } from '@/hooks/usePrefetchFileContents';
+import { encodeRoutePath } from '@/utils/routeBase64';
 
 export default React.memo(function FilesScreen() {
     const router = useRouter();
@@ -69,7 +70,7 @@ export default React.memo(function FilesScreen() {
             shakerRefs.current.get(file.fullPath)?.shake();
             return;
         }
-        const encodedPath = btoa(file.fullPath);
+        const encodedPath = encodeRoutePath(file.fullPath);
         router.push(`/session/${sessionId}/file?path=${encodedPath}`);
     }, [router, sessionId]);
 

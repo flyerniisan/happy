@@ -12,6 +12,7 @@ import { layout } from '@/components/layout';
 import { t } from '@/text';
 import { FileIcon } from '@/components/FileIcon';
 import { resolveSessionFilePath } from '@/utils/sessionFileLinks';
+import { decodeRoutePath } from '@/utils/routeBase64';
 
 interface FileContent {
     content: string;
@@ -94,9 +95,9 @@ export default React.memo(function FileScreen() {
     const sessionPath = session?.metadata?.path ?? null;
     let rawPath = '';
 
-    // Decode base64 path with error handling
+    // Decode route path with error handling
     try {
-        rawPath = encodedPath ? atob(encodedPath) : '';
+        rawPath = encodedPath ? decodeRoutePath(encodedPath) : '';
     } catch (error) {
         console.error('Failed to decode file path:', error);
         rawPath = encodedPath || '';
@@ -218,7 +219,7 @@ export default React.memo(function FileScreen() {
                 if (sessionPath && sessionId && gitDiffPath && gitDiffPath !== '.') {
                     try {
                         const diffResponse = await sessionBash(sessionId, {
-                            command: `git diff --no-ext-diff -- "${gitDiffPath}"`,
+                            command: `git -c core.quotePath=false diff --no-ext-diff -- "${gitDiffPath}"`,
                             cwd: sessionPath,
                             timeout: 5000
                         });

@@ -3,6 +3,8 @@
 This folder documents how Happy works internally, with a focus on protocol, backend architecture, deployment, and the CLI tool. Start here.
 
 ## Index
+- developer-onboarding.md: Recommended codebase reading order, package map, and local learning path for new contributors.
+- happy-app-windows-local-guide.md: Windows local setup, web verification, APK packaging flow, mirror strategy, and troubleshooting guide for `happy-app`.
 - protocol.md: Wire protocol (WebSocket), payload formats, sequencing, and concurrency rules.
 - realtime-sync-and-rpc.md: High-level overview of realtime socket management and RPC control flow.
 - api.md: HTTP endpoints and authentication flows.

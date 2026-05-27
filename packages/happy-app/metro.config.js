@@ -1,10 +1,26 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("path");
+const monorepoRoot = path.resolve(__dirname, '..', '..');
+const workspaceNodeModulesPath = path.join(monorepoRoot, 'node_modules');
+const happyWirePackagePath = path.resolve(__dirname, '../happy-wire');
 
 const config = getDefaultConfig(__dirname, {
   // Enable CSS support for web
   isCSSEnabled: true,
 });
+
+// Expo's EXPO_NO_METRO_WORKSPACE_ROOT=1 keeps the app entry rooted at
+// packages/happy-app, but it also disables monorepo auto-discovery. Restore
+// the workspace paths explicitly so release bundling can hash and transform
+// shared packages from this pnpm workspace.
+config.watchFolders = [
+  monorepoRoot,
+  happyWirePackagePath,
+];
+config.resolver.nodeModulesPaths = [
+  path.join(__dirname, 'node_modules'),
+  workspaceNodeModulesPath,
+];
 
 // Add support for .wasm files (required by Skia for all platforms)
 // Source: https://shopify.github.io/react-native-skia/docs/getting-started/installation/
@@ -26,6 +42,7 @@ config.resolver.blockList = [
 // `r.__H` crashes. Pin to the CJS bundles so everyone shares state.
 const preactCjsPath = require.resolve('preact');
 const preactHooksCjsPath = require.resolve('preact/hooks');
+const happyWireEntryPath = path.resolve(__dirname, '../happy-wire/dist/index.cjs');
 const baseResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'preact') {
@@ -33,6 +50,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   }
   if (moduleName === 'preact/hooks') {
     return { filePath: preactHooksCjsPath, type: 'sourceFile' };
+  }
+  if (moduleName === '@slopus/happy-wire') {
+    return { filePath: happyWireEntryPath, type: 'sourceFile' };
   }
   if (baseResolveRequest) {
     return baseResolveRequest(context, moduleName, platform);

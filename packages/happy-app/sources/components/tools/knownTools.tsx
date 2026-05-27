@@ -2,6 +2,7 @@ import { Metadata, TodoItemsSchema } from '@/sync/storageTypes';
 import { ToolCall, Message } from '@/sync/typesMessage';
 import { resolvePath } from '@/utils/pathUtils';
 import { stringifyToolCommand } from '@/utils/toolCommand';
+import { parseGitDiffPath } from '@/utils/codexUnifiedDiff';
 import * as z from 'zod';
 import { Ionicons, Octicons } from '@expo/vector-icons';
 import React from 'react';
@@ -832,8 +833,8 @@ export const knownTools = {
             if (opts.tool.input?.unified_diff && typeof opts.tool.input.unified_diff === 'string') {
                 const diffLines = opts.tool.input.unified_diff.split('\n');
                 for (const line of diffLines) {
-                    if (line.startsWith('+++ b/') || line.startsWith('+++ ')) {
-                        const fileName = line.replace(/^\+\+\+ (b\/)?/, '');
+                    const fileName = parseGitDiffPath(line);
+                    if (fileName) {
                         const basename = fileName.split('/').pop() || fileName;
                         return basename;
                     }
@@ -869,8 +870,8 @@ export const knownTools = {
             if (opts.tool.input?.unified_diff && typeof opts.tool.input.unified_diff === 'string') {
                 const diffLines = opts.tool.input.unified_diff.split('\n');
                 for (const line of diffLines) {
-                    if (line.startsWith('+++ b/') || line.startsWith('+++ ')) {
-                        const fileName = line.replace(/^\+\+\+ (b\/)?/, '');
+                    const fileName = parseGitDiffPath(line);
+                    if (fileName) {
                         const basename = fileName.split('/').pop() || fileName;
                         return basename;
                     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { materializeUnifiedDiffPatch, parseUnifiedDiff } from './codexUnifiedDiff';
+import { materializeUnifiedDiffPatch, parseGitDiffPath, parseUnifiedDiff } from './codexUnifiedDiff';
 
 describe('parseUnifiedDiff', () => {
     it('parses unified diff hunk fragments without file headers', () => {
@@ -69,5 +69,27 @@ describe('parseUnifiedDiff', () => {
         ].join('\n');
 
         expect(materializeUnifiedDiffPatch(patch, 'README.md', 'update')).toBe(patch);
+    });
+
+    it('decodes git-quoted unicode filenames from full unified diffs', () => {
+        const parsed = parseUnifiedDiff(
+            [
+                'diff --git "a/docs/\\344\\270\\255\\346\\226\\207\\346\\226\\207\\344\\273\\266.md" "b/docs/\\344\\270\\255\\346\\226\\207\\346\\226\\207\\344\\273\\266.md"',
+                'index 1111111..2222222 100644',
+                '--- "a/docs/\\344\\270\\255\\346\\226\\207\\346\\226\\207\\344\\273\\266.md"',
+                '+++ "b/docs/\\344\\270\\255\\346\\226\\207\\346\\226\\207\\344\\273\\266.md"',
+                '@@ -1 +1 @@',
+                '-old line',
+                '+new line',
+            ].join('\n'),
+        );
+
+        expect(parsed.fileName).toBe('docs/\u4e2d\u6587\u6587\u4ef6.md');
+        expect(parsed.oldText).toBe('old line');
+        expect(parsed.newText).toBe('new line');
+    });
+
+    it('decodes octal-escaped git paths', () => {
+        expect(parseGitDiffPath('+++ "b/docs/\\344\\270\\255\\346\\226\\207.md"')).toBe('docs/\u4e2d\u6587.md');
     });
 });

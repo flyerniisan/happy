@@ -1,3 +1,5 @@
+import { decodeGitPath } from '@/sync/git-parsers/gitPath';
+
 export type ParsedUnifiedDiff = {
     oldText: string;
     newText: string;
@@ -26,6 +28,20 @@ export function materializeUnifiedDiffPatch(
     return `--- ${oldPath}\n+++ ${newPath}\n${unifiedDiff}`;
 }
 
+export function parseGitDiffPath(line: string): string | undefined {
+    if (!line.startsWith('+++ ')) {
+        return undefined;
+    }
+
+    const rawPath = line.replace(/^\+\+\+ (b\/)?/, '');
+    if (rawPath === '/dev/null') {
+        return undefined;
+    }
+
+    const decodedPath = decodeGitPath(rawPath);
+    return decodedPath.startsWith('b/') ? decodedPath.slice(2) : decodedPath;
+}
+
 /**
  * Parse a unified diff or diff hunk fragment into old/new file contents.
  */
@@ -37,8 +53,9 @@ export function parseUnifiedDiff(unifiedDiff: string): ParsedUnifiedDiff {
     let inHunk = false;
 
     for (const line of lines) {
-        if (line.startsWith('+++ b/') || line.startsWith('+++ ')) {
-            fileName = line.replace(/^\+\+\+ (b\/)?/, '');
+        const parsedPath = parseGitDiffPath(line);
+        if (parsedPath !== undefined) {
+            fileName = parsedPath;
             continue;
         }
 

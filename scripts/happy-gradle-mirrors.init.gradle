@@ -1,0 +1,40 @@
+def configureMirrors = { repoHandler ->
+    def toRemove = []
+    repoHandler.each { repo ->
+        def repoUrl = null
+        try {
+            repoUrl = repo.hasProperty('url') ? repo.url?.toString() : null
+        } catch (ignored) {}
+
+        if (repoUrl == null) {
+            return
+        }
+
+        if (repoUrl.startsWith('file:')) {
+            return
+        }
+
+        if (repoUrl.contains('maven.aliyun.com') || repoUrl.contains('jitpack.io')) {
+            return
+        }
+
+        toRemove << repo
+    }
+
+    toRemove.each { repoHandler.remove(it) }
+
+    repoHandler.maven { url 'https://maven.aliyun.com/repository/google' }
+    repoHandler.maven { url 'https://maven.aliyun.com/repository/public' }
+    repoHandler.maven { url 'https://maven.aliyun.com/repository/central' }
+    repoHandler.maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+    repoHandler.maven { url 'https://www.jitpack.io' }
+}
+
+settingsEvaluated { settings ->
+    configureMirrors(settings.pluginManagement.repositories)
+}
+
+gradle.beforeProject { project ->
+    configureMirrors(project.repositories)
+    configureMirrors(project.buildscript.repositories)
+}

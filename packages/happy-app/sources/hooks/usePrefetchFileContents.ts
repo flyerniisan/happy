@@ -55,7 +55,7 @@ async function prefetchFile(sessionId: string, sessionPath: string, file: GitFil
     if (gitDiffPath && gitDiffPath !== '.') {
         try {
             const diffResponse = await sessionBash(sessionId, {
-                command: `git diff --no-ext-diff -- "${gitDiffPath}"`,
+                command: `git -c core.quotePath=false diff --no-ext-diff -- "${gitDiffPath}"`,
                 cwd: sessionPath,
                 timeout: 5000,
             });
