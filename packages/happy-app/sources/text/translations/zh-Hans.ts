@@ -102,6 +102,15 @@ export const zhHans: TranslationStructure = {
         enterUrlManually: '手动输入 URL',
     },
 
+    scanner: {
+        terminalSubtitle: '扫描终端上显示的二维码以认证这台设备。',
+        centerQrCode: '请将二维码放入取景框内。',
+        requestingCameraPermission: '正在请求相机权限...',
+        cameraPermissionRequired: '需要相机权限',
+        cameraPermissionDescription: '请允许相机访问，以便 Happy 在这台设备上扫描二维码。',
+        grantCameraAccess: '授予相机权限',
+    },
+
     settings: {
         title: '设置',
         connectedAccounts: '已连接账户',
@@ -754,6 +763,7 @@ export const zhHans: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: '认证终端',
         pasteUrlFromTerminal: '粘贴来自您终端的认证 URL',
+        pasteUrlFromDevice: '粘贴来自另一台设备的认证 URL',
         deviceLinkedSuccessfully: '设备链接成功',
         terminalConnectedSuccessfully: '终端连接成功',
         invalidAuthUrl: '无效的认证 URL',

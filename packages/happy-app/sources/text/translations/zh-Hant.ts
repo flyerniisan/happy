@@ -101,6 +101,15 @@ export const zhHant: TranslationStructure = {
         enterUrlManually: '手動輸入 URL',
     },
 
+    scanner: {
+        terminalSubtitle: '掃描終端上顯示的 QR Code 來驗證這台裝置。',
+        centerQrCode: '請將 QR Code 放入取景框內。',
+        requestingCameraPermission: '正在要求相機權限...',
+        cameraPermissionRequired: '需要相機權限',
+        cameraPermissionDescription: '請允許相機存取，讓 Happy 可以在這台裝置上掃描 QR Code。',
+        grantCameraAccess: '授予相機權限',
+    },
+
     settings: {
         title: '設定',
         connectedAccounts: '已連結帳戶',
@@ -753,6 +762,7 @@ export const zhHant: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: '驗證終端',
         pasteUrlFromTerminal: '貼上來自您終端的驗證 URL',
+        pasteUrlFromDevice: '貼上來自另一台裝置的驗證 URL',
         deviceLinkedSuccessfully: '裝置連結成功',
         terminalConnectedSuccessfully: '終端連線成功',
         invalidAuthUrl: '無效的驗證 URL',

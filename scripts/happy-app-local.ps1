@@ -3,6 +3,12 @@ param(
     [ValidateSet('doctor', 'install', 'web', 'apk', 'apk-release', 'full')]
     [string]$Mode = 'full',
     [switch]$ForceInstall,
+    [switch]$SkipInstall,
+    [switch]$SkipHappyWireBuild,
+    [switch]$SkipTypecheck,
+    [switch]$SkipPrebuild,
+    [switch]$ResetMetroCache,
+    [switch]$NoDaemon,
     [string]$Architectures = 'arm64-v8a',
     [int]$WebPort = 19006
 )
@@ -185,6 +191,29 @@ function Typecheck-HappyApp {
     Invoke-Pnpm -Arguments @('--filter', 'happy-app', 'typecheck')
 }
 
+function Invoke-HappyAppBuildPreparation {
+    if ($SkipInstall) {
+        Write-Step 'Skipping dependency install'
+    }
+    else {
+        Install-HappyAppDependencies
+    }
+
+    if ($SkipHappyWireBuild) {
+        Write-Step 'Skipping @slopus/happy-wire build'
+    }
+    else {
+        Build-HappyWire
+    }
+
+    if ($SkipTypecheck) {
+        Write-Step 'Skipping happy-app typecheck'
+    }
+    else {
+        Typecheck-HappyApp
+    }
+}
+
 function Test-WebEndpoint {
     param([int]$Port)
 
@@ -332,6 +361,104 @@ function Set-GradleWrapperVersion {
     }
 }
 
+function Test-UseNoDaemon {
+    if ($NoDaemon) {
+        return $true
+    }
+
+    $ci = [Environment]::GetEnvironmentVariable('CI', 'Process')
+    return $ci -match '^(1|true|yes)$'
+}
+
+function Get-GradleArguments {
+    param([string]$TaskName)
+
+    $arguments = @(
+        '-I',
+        $GradleMirrorScript,
+        $TaskName,
+        "-PreactNativeArchitectures=$Architectures",
+        '--console=plain'
+    )
+
+    if (Test-UseNoDaemon) {
+        $arguments += '--no-daemon'
+    }
+    else {
+        $arguments += '--daemon'
+    }
+
+    return $arguments
+}
+
+function Invoke-GradleLogged {
+    param(
+        [string[]]$Arguments,
+        [string]$LogPath
+    )
+
+    $savedErrorActionPreference = $ErrorActionPreference
+    $hasNativeErrorPreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
+    if ($hasNativeErrorPreference) {
+        $savedNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+    }
+
+    try {
+        # Some Android native modules print informational messages to stderr.
+        # Treat those as log output and rely on the Gradle exit code instead.
+        $ErrorActionPreference = 'Continue'
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+
+        (& $GradleBin @Arguments 2>&1 | Tee-Object -FilePath $LogPath) | Out-Host
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $savedNativeErrorPreference
+        }
+    }
+}
+
+function Remove-StaleArtifact {
+    param([string]$Path)
+
+    if (Test-Path $Path) {
+        Remove-Item $Path -Force
+    }
+}
+
+function Assert-ApkContainsArchitectures {
+    param(
+        [string]$ApkPath,
+        [string]$ExpectedArchitectures
+    )
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($ApkPath)
+    try {
+        $actualArchitectures = $archive.Entries |
+            Where-Object { $_.FullName -like 'lib/*' } |
+            ForEach-Object { ($_.FullName -split '/')[1] } |
+            Where-Object { $_ } |
+            Sort-Object -Unique
+
+        $expected = $ExpectedArchitectures.Split(',') |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ }
+
+        $missing = @($expected | Where-Object { $actualArchitectures -notcontains $_ })
+        if ($missing.Count -gt 0) {
+            throw "APK architectures mismatch. Missing: $($missing -join ', '). Actual: $($actualArchitectures -join ', ')"
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Build-DebugApk {
     Require-Path $GradleBin 'Gradle executable'
     Require-Path $AndroidDir 'Android project directory'
@@ -339,29 +466,36 @@ function Build-DebugApk {
     if (Test-Path $ApkLog) {
         Remove-Item $ApkLog -Force
     }
+    Remove-StaleArtifact -Path $ApkPath
 
     Write-Step "Building debug APK for architectures: $Architectures"
+    Write-Step ($(if (Test-UseNoDaemon) { 'Running Gradle without daemon' } else { 'Reusing Gradle daemon for faster local builds' }))
 
     Push-Location $AndroidDir
     $savedNodeEnv = [Environment]::GetEnvironmentVariable('NODE_ENV', 'Process')
     $savedAppEnv = [Environment]::GetEnvironmentVariable('APP_ENV', 'Process')
+    $savedMetroReset = [Environment]::GetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', 'Process')
 
     try {
         [Environment]::SetEnvironmentVariable('NODE_ENV', 'development', 'Process')
         [Environment]::SetEnvironmentVariable('APP_ENV', 'development', 'Process')
+        [Environment]::SetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', $(if ($ResetMetroCache) { '1' } else { '0' }), 'Process')
 
-        & $GradleBin '-I' $GradleMirrorScript 'assembleDebug' "-PreactNativeArchitectures=$Architectures" '--no-daemon' '--console=plain' 2>&1 | Tee-Object -FilePath $ApkLog
-        if ($LASTEXITCODE -ne 0) {
-            throw "Gradle assembleDebug failed with exit code $LASTEXITCODE. See $ApkLog"
+        $gradleArgs = Get-GradleArguments -TaskName 'assembleDebug'
+        $exitCode = Invoke-GradleLogged -Arguments $gradleArgs -LogPath $ApkLog
+        if ($exitCode -ne 0) {
+            throw "Gradle assembleDebug failed with exit code $exitCode. See $ApkLog"
         }
     }
     finally {
         [Environment]::SetEnvironmentVariable('NODE_ENV', $savedNodeEnv, 'Process')
         [Environment]::SetEnvironmentVariable('APP_ENV', $savedAppEnv, 'Process')
+        [Environment]::SetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', $savedMetroReset, 'Process')
         Pop-Location
     }
 
     Require-Path $ApkPath 'Debug APK'
+    Assert-ApkContainsArchitectures -ApkPath $ApkPath -ExpectedArchitectures $Architectures
     Write-Step "APK ready: $ApkPath"
 }
 
@@ -372,32 +506,40 @@ function Build-ReleaseApk {
     if (Test-Path $ReleaseApkLog) {
         Remove-Item $ReleaseApkLog -Force
     }
+    Remove-StaleArtifact -Path $ReleaseApkPath
 
     Write-Step "Building release APK for architectures: $Architectures"
+    Write-Step ($(if (Test-UseNoDaemon) { 'Running Gradle without daemon' } else { 'Reusing Gradle daemon for faster local builds' }))
+    Write-Step ($(if ($ResetMetroCache) { 'Resetting Metro cache for a cold release bundle' } else { 'Reusing Metro cache for faster release bundling' }))
 
     Push-Location $AndroidDir
     $savedNodeEnv = [Environment]::GetEnvironmentVariable('NODE_ENV', 'Process')
     $savedAppEnv = [Environment]::GetEnvironmentVariable('APP_ENV', 'Process')
     $savedExpoNoWorkspaceRoot = [Environment]::GetEnvironmentVariable('EXPO_NO_METRO_WORKSPACE_ROOT', 'Process')
+    $savedMetroReset = [Environment]::GetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', 'Process')
 
     try {
         [Environment]::SetEnvironmentVariable('NODE_ENV', 'production', 'Process')
         [Environment]::SetEnvironmentVariable('APP_ENV', 'production', 'Process')
         [Environment]::SetEnvironmentVariable('EXPO_NO_METRO_WORKSPACE_ROOT', '1', 'Process')
+        [Environment]::SetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', $(if ($ResetMetroCache) { '1' } else { '0' }), 'Process')
 
-        & $GradleBin '-I' $GradleMirrorScript 'assembleRelease' "-PreactNativeArchitectures=$Architectures" '--no-daemon' '--console=plain' 2>&1 | Tee-Object -FilePath $ReleaseApkLog
-        if ($LASTEXITCODE -ne 0) {
-            throw "Gradle assembleRelease failed with exit code $LASTEXITCODE. See $ReleaseApkLog"
+        $gradleArgs = Get-GradleArguments -TaskName 'assembleRelease'
+        $exitCode = Invoke-GradleLogged -Arguments $gradleArgs -LogPath $ReleaseApkLog
+        if ($exitCode -ne 0) {
+            throw "Gradle assembleRelease failed with exit code $exitCode. See $ReleaseApkLog"
         }
     }
     finally {
         [Environment]::SetEnvironmentVariable('NODE_ENV', $savedNodeEnv, 'Process')
         [Environment]::SetEnvironmentVariable('APP_ENV', $savedAppEnv, 'Process')
         [Environment]::SetEnvironmentVariable('EXPO_NO_METRO_WORKSPACE_ROOT', $savedExpoNoWorkspaceRoot, 'Process')
+        [Environment]::SetEnvironmentVariable('HAPPY_REACT_NATIVE_RESET_CACHE', $savedMetroReset, 'Process')
         Pop-Location
     }
 
     Require-Path $ReleaseApkPath 'Release APK'
+    Assert-ApkContainsArchitectures -ApkPath $ReleaseApkPath -ExpectedArchitectures $Architectures
     Write-Step "Release APK ready: $ReleaseApkPath"
 }
 
@@ -409,45 +551,50 @@ switch ($Mode) {
         exit 0
     }
     'install' {
-        Install-HappyAppDependencies
-        Build-HappyWire
-        Typecheck-HappyApp
+        Invoke-HappyAppBuildPreparation
         exit 0
     }
     'web' {
-        Install-HappyAppDependencies
-        Build-HappyWire
-        Typecheck-HappyApp
+        Invoke-HappyAppBuildPreparation
         Verify-HappyAppWeb
         exit 0
     }
     'apk' {
-        Install-HappyAppDependencies
-        Build-HappyWire
-        Typecheck-HappyApp
+        Invoke-HappyAppBuildPreparation
         Ensure-GradleDistribution
-        Invoke-AndroidPrebuild
+        if ($SkipPrebuild) {
+            Write-Step 'Skipping Expo Android prebuild'
+        }
+        else {
+            Invoke-AndroidPrebuild
+        }
         Set-GradleWrapperVersion
         Build-DebugApk
         exit 0
     }
     'apk-release' {
-        Install-HappyAppDependencies
-        Build-HappyWire
-        Typecheck-HappyApp
+        Invoke-HappyAppBuildPreparation
         Ensure-GradleDistribution
-        Invoke-AndroidPrebuild -NodeEnv 'production' -AppEnv 'production'
+        if ($SkipPrebuild) {
+            Write-Step 'Skipping Expo Android prebuild'
+        }
+        else {
+            Invoke-AndroidPrebuild -NodeEnv 'production' -AppEnv 'production'
+        }
         Set-GradleWrapperVersion
         Build-ReleaseApk
         exit 0
     }
     'full' {
-        Install-HappyAppDependencies
-        Build-HappyWire
-        Typecheck-HappyApp
+        Invoke-HappyAppBuildPreparation
         Verify-HappyAppWeb
         Ensure-GradleDistribution
-        Invoke-AndroidPrebuild
+        if ($SkipPrebuild) {
+            Write-Step 'Skipping Expo Android prebuild'
+        }
+        else {
+            Invoke-AndroidPrebuild
+        }
         Set-GradleWrapperVersion
         Build-DebugApk
         exit 0

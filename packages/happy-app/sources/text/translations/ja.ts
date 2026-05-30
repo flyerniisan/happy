@@ -102,6 +102,15 @@ export const ja: TranslationStructure = {
         enterUrlManually: 'URLを手動で入力',
     },
 
+    scanner: {
+        terminalSubtitle: 'Scan the QR code shown in your terminal to authenticate this device.',
+        centerQrCode: 'Place the QR code inside the frame.',
+        requestingCameraPermission: 'Requesting camera permission...',
+        cameraPermissionRequired: 'Camera permission required',
+        cameraPermissionDescription: 'Allow camera access so Happy can scan the QR code on this device.',
+        grantCameraAccess: 'Grant camera access',
+    },
+
     settings: {
         title: '設定',
         connectedAccounts: '接続済みアカウント',
@@ -754,6 +763,7 @@ export const ja: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: 'ターミナルを認証',
         pasteUrlFromTerminal: 'ターミナルから認証URLを貼り付けてください',
+        pasteUrlFromDevice: '別のデバイスの認証URLを貼り付けてください',
         deviceLinkedSuccessfully: 'デバイスが正常にリンクされました',
         terminalConnectedSuccessfully: 'ターミナルが正常に接続されました',
         invalidAuthUrl: '無効な認証URL',

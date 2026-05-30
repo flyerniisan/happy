@@ -99,6 +99,15 @@ export const it: TranslationStructure = {
         enterUrlManually: 'Inserisci URL manualmente',
     },
 
+    scanner: {
+        terminalSubtitle: 'Scansiona il codice QR mostrato nel terminale per autenticare questo dispositivo.',
+        centerQrCode: 'Posiziona il codice QR all\'interno della cornice.',
+        requestingCameraPermission: 'Richiesta del permesso fotocamera in corso...',
+        cameraPermissionRequired: 'Permesso fotocamera richiesto',
+        cameraPermissionDescription: 'Consenti l\'accesso alla fotocamera affinché Happy possa scansionare il codice QR su questo dispositivo.',
+        grantCameraAccess: 'Concedi accesso alla fotocamera',
+    },
+
     settings: {
         title: 'Impostazioni',
         connectedAccounts: 'Account collegati',
@@ -751,6 +760,7 @@ export const it: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: 'Autentica terminale',
         pasteUrlFromTerminal: 'Incolla l\'URL di autenticazione dal terminale',
+        pasteUrlFromDevice: 'Incolla l\'URL di autenticazione dall\'altro dispositivo',
         deviceLinkedSuccessfully: 'Dispositivo collegato con successo',
         terminalConnectedSuccessfully: 'Terminale collegato con successo',
         invalidAuthUrl: 'URL di autenticazione non valido',

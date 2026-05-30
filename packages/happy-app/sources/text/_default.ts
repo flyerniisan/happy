@@ -99,6 +99,15 @@ export const en = {
         enterUrlManually: 'Enter URL manually',
     },
 
+    scanner: {
+        terminalSubtitle: 'Scan the QR code shown in your terminal to authenticate this device.',
+        centerQrCode: 'Place the QR code inside the frame.',
+        requestingCameraPermission: 'Requesting camera permission...',
+        cameraPermissionRequired: 'Camera permission required',
+        cameraPermissionDescription: 'Allow camera access so Happy can scan the QR code on this device.',
+        grantCameraAccess: 'Grant camera access',
+    },
+
     settings: {
         title: 'Settings',
         connectedAccounts: 'Connected Accounts',
@@ -768,6 +777,7 @@ export const en = {
         // Used across connect flows and settings
         authenticateTerminal: 'Authenticate Terminal',
         pasteUrlFromTerminal: 'Paste the authentication URL from your terminal',
+        pasteUrlFromDevice: 'Paste the authentication URL from the other device',
         deviceLinkedSuccessfully: 'Device linked successfully',
         terminalConnectedSuccessfully: 'Terminal connected successfully',
         invalidAuthUrl: 'Invalid authentication URL',

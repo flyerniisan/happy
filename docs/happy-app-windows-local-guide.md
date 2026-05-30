@@ -5,8 +5,8 @@ This guide documents the exact Windows local workflow that was verified on May 1
 Use this when you need a repeatable path from a fresh checkout to:
 
 - a working local `happy-app` web runtime
-- a generated Android debug APK
-- a generated Android release APK
+- a generated Android simulator debug APK
+- a generated Android real-device release APK
 - a clear troubleshooting path when Windows, Gradle, Expo, or mirrors get in the way
 
 ## Scope
@@ -35,29 +35,27 @@ Run these from the repo root:
 
 ```powershell
 corepack pnpm happy-app:doctor:windows
-corepack pnpm happy-app:verify:windows
-corepack pnpm happy-app:apk:release:windows
+corepack pnpm happy-app:apk:simulator:windows
+corepack pnpm happy-app:apk:device:windows
 ```
 
-That one command chain will:
+That command set will:
 
 1. verify the local Java and Android SDK setup
 2. install the workspace dependencies needed by `happy-app`
 3. build `@slopus/happy-wire`
 4. typecheck `happy-app`
-5. start Expo Web and confirm it responds
-6. prebuild the Android project
-7. download or reuse Gradle `8.13`
-8. build a debug APK for `arm64-v8a`
-9. optionally build a release APK for `arm64-v8a`
+5. prebuild the Android project
+6. download or reuse Gradle `8.13`
+7. build a simulator debug APK for `x86_64`
+8. build a real-device release APK for `arm64-v8a`
 
 Primary outputs:
 
-- Web log: [`packages/happy-app/web-test.log`](../packages/happy-app/web-test.log)
-- Android build log: [`packages/happy-app/android/assembleDebug-arm64_v8a.log`](../packages/happy-app/android/assembleDebug-arm64_v8a.log)
-- APK: [`packages/happy-app/android/app/build/outputs/apk/debug/app-debug.apk`](../packages/happy-app/android/app/build/outputs/apk/debug/app-debug.apk)
+- Simulator build log: [`packages/happy-app/android/assembleDebug-x86_64.log`](../packages/happy-app/android/assembleDebug-x86_64.log)
+- Simulator APK alias: [`packages/happy-app/android/app/build/outputs/apk/debug/happy-simulator-debug-x86_64.apk`](../packages/happy-app/android/app/build/outputs/apk/debug/happy-simulator-debug-x86_64.apk)
 - Release build log: [`packages/happy-app/android/assembleRelease-arm64-v8a.log`](../packages/happy-app/android/assembleRelease-arm64-v8a.log)
-- Release APK: [`packages/happy-app/android/app/build/outputs/apk/release/app-release.apk`](../packages/happy-app/android/app/build/outputs/apk/release/app-release.apk)
+- Device APK alias: [`packages/happy-app/android/app/build/outputs/apk/release/happy-device-release-arm64-v8a.apk`](../packages/happy-app/android/app/build/outputs/apk/release/happy-device-release-arm64-v8a.apk)
 
 ## One-Click Commands
 
@@ -67,8 +65,14 @@ These commands were added to the root `package.json`:
 corepack pnpm happy-app:doctor:windows
 corepack pnpm happy-app:install:windows
 corepack pnpm happy-app:web:verify:windows
+corepack pnpm happy-app:apk:simulator:windows
+corepack pnpm happy-app:apk:simulator:windows:fast
+corepack pnpm happy-app:apk:device:windows
+corepack pnpm happy-app:apk:device:windows:fast
 corepack pnpm happy-app:apk:windows
+corepack pnpm happy-app:apk:windows:fast
 corepack pnpm happy-app:apk:release:windows
+corepack pnpm happy-app:apk:release:windows:fast
 corepack pnpm happy-app:verify:windows
 ```
 
@@ -80,12 +84,24 @@ What each one does:
   Installs the dependency subset needed by `happy-app`, builds `happy-wire`, and typechecks the app.
 - `happy-app:web:verify:windows`
   Runs install plus web verification.
+- `happy-app:apk:simulator:windows`
+  Runs install plus Android prebuild plus `x86_64` debug APK packaging for the emulator.
+- `happy-app:apk:simulator:windows:fast`
+  Reuses the existing install, Gradle daemon, Metro cache, and Android project for quicker local emulator rebuilds.
+- `happy-app:apk:device:windows`
+  Runs install plus production Android prebuild plus `arm64-v8a` release APK packaging for a real device.
+- `happy-app:apk:device:windows:fast`
+  Reuses the existing install, Gradle daemon, Metro cache, and Android project for quicker local real-device rebuilds.
 - `happy-app:apk:windows`
-  Runs install plus Android prebuild plus debug APK packaging.
+  Alias of `happy-app:apk:simulator:windows`.
+- `happy-app:apk:windows:fast`
+  Alias of `happy-app:apk:simulator:windows:fast`.
 - `happy-app:apk:release:windows`
-  Runs install plus production Android prebuild plus release APK packaging.
+  Alias of `happy-app:apk:device:windows`.
+- `happy-app:apk:release:windows:fast`
+  Alias of `happy-app:apk:device:windows:fast`.
 - `happy-app:verify:windows`
-  Runs the full path: install, web verification, Android prebuild, and debug APK packaging.
+  Runs the full path: install, web verification, Android prebuild, and `x86_64` debug APK packaging.
 
 ## What The Script Assumes
 
@@ -343,7 +359,7 @@ $env:APP_ENV = 'development'
 corepack pnpm --filter happy-app exec expo prebuild --platform android --clean
 ```
 
-### Build debug APK
+### Build simulator debug APK
 
 ```powershell
 $env:NODE_ENV = 'development'
@@ -351,12 +367,12 @@ $env:APP_ENV = 'development'
 C:\Users\<you>\.gradle\local-dist\gradle-8.13\bin\gradle.bat `
   -I scripts/happy-gradle-mirrors.init.gradle `
   assembleDebug `
-  -PreactNativeArchitectures=arm64-v8a `
+  -PreactNativeArchitectures=x86_64 `
   --no-daemon `
   --console=plain
 ```
 
-### Build release APK
+### Build real-device release APK
 
 ```powershell
 $env:NODE_ENV = 'production'
@@ -370,18 +386,17 @@ C:\Users\<you>\.gradle\local-dist\gradle-8.13\bin\gradle.bat `
   --console=plain
 ```
 
-## Why The Default APK Build Uses `arm64-v8a`
+## Which Architecture To Build
 
-The automation defaults to:
+Use these defaults:
 
-```text
--PreactNativeArchitectures=arm64-v8a
-```
+- `x86_64` for the simulator debug APK
+- `arm64-v8a` for the real-device release APK
 
 Reason:
 
-- it is the fastest way to prove the machine can produce a real APK
-- it avoids spending extra time on all four default ABIs during local verification
+- `x86_64` matches the common Android emulator images used for local debugging
+- `arm64-v8a` gives you the fastest real-device package without compiling all ABIs
 
 If you need the full default set later, rerun the build with:
 
@@ -395,15 +410,19 @@ Useful locations:
 
 - Web verification log:
   [`packages/happy-app/web-test.log`](../packages/happy-app/web-test.log)
-- Android build log:
-  [`packages/happy-app/android/assembleDebug-arm64_v8a.log`](../packages/happy-app/android/assembleDebug-arm64_v8a.log)
+- Android simulator build log:
+  [`packages/happy-app/android/assembleDebug-x86_64.log`](../packages/happy-app/android/assembleDebug-x86_64.log)
 - Android release build log:
   [`packages/happy-app/android/assembleRelease-arm64-v8a.log`](../packages/happy-app/android/assembleRelease-arm64-v8a.log)
 - Gradle wrapper:
   [`packages/happy-app/android/gradle/wrapper/gradle-wrapper.properties`](../packages/happy-app/android/gradle/wrapper/gradle-wrapper.properties)
-- Generated APK:
+- Generated simulator APK alias:
+  [`packages/happy-app/android/app/build/outputs/apk/debug/happy-simulator-debug-x86_64.apk`](../packages/happy-app/android/app/build/outputs/apk/debug/happy-simulator-debug-x86_64.apk)
+- Generated device APK alias:
+  [`packages/happy-app/android/app/build/outputs/apk/release/happy-device-release-arm64-v8a.apk`](../packages/happy-app/android/app/build/outputs/apk/release/happy-device-release-arm64-v8a.apk)
+- Raw Gradle debug APK:
   [`packages/happy-app/android/app/build/outputs/apk/debug/app-debug.apk`](../packages/happy-app/android/app/build/outputs/apk/debug/app-debug.apk)
-- Generated release APK:
+- Raw Gradle release APK:
   [`packages/happy-app/android/app/build/outputs/apk/release/app-release.apk`](../packages/happy-app/android/app/build/outputs/apk/release/app-release.apk)
 
 ## Known Limitations
@@ -439,13 +458,13 @@ corepack pnpm happy-app:web:verify:windows
 When you need a fresh Android package:
 
 ```powershell
-corepack pnpm happy-app:apk:windows
+corepack pnpm happy-app:apk:simulator:windows
 ```
 
 When you need a fresh Android release package:
 
 ```powershell
-corepack pnpm happy-app:apk:release:windows
+corepack pnpm happy-app:apk:device:windows
 ```
 
 When you want the full end-to-end local confidence check:

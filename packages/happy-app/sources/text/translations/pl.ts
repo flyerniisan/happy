@@ -111,6 +111,15 @@ export const pl: TranslationStructure = {
         enterUrlManually: 'Wprowadź URL ręcznie',
     },
 
+    scanner: {
+        terminalSubtitle: 'Zeskanuj kod QR wyświetlony w terminalu, aby uwierzytelnić to urządzenie.',
+        centerQrCode: 'Umieść kod QR wewnątrz ramki.',
+        requestingCameraPermission: 'Trwa proszenie o uprawnienie do aparatu...',
+        cameraPermissionRequired: 'Wymagane uprawnienie do aparatu',
+        cameraPermissionDescription: 'Zezwól na dostęp do aparatu, aby Happy mógł zeskanować kod QR na tym urządzeniu.',
+        grantCameraAccess: 'Przyznaj dostęp do aparatu',
+    },
+
     settings: {
         title: 'Ustawienia',
         connectedAccounts: 'Połączone konta',
@@ -769,6 +778,7 @@ export const pl: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: 'Uwierzytelnij terminal',
         pasteUrlFromTerminal: 'Wklej URL uwierzytelnienia z terminala',
+        pasteUrlFromDevice: 'Wklej URL uwierzytelnienia z drugiego urządzenia',
         deviceLinkedSuccessfully: 'Urządzenie połączone pomyślnie',
         terminalConnectedSuccessfully: 'Terminal połączony pomyślnie',
         invalidAuthUrl: 'Nieprawidłowy URL uwierzytelnienia',

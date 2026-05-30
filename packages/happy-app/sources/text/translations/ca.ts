@@ -100,6 +100,15 @@ export const ca: TranslationStructure = {
         enterUrlManually: 'Introdueix l\'URL manualment',
     },
 
+    scanner: {
+        terminalSubtitle: 'Escaneja el codi QR que es mostra al terminal per autenticar aquest dispositiu.',
+        centerQrCode: 'Col·loca el codi QR dins del marc.',
+        requestingCameraPermission: 'S\'està sol·licitant permís de càmera...',
+        cameraPermissionRequired: 'Cal permís de càmera',
+        cameraPermissionDescription: 'Permet l\'accés a la càmera perquè Happy pugui escanejar el codi QR en aquest dispositiu.',
+        grantCameraAccess: 'Concedeix accés a la càmera',
+    },
+
     settings: {
         title: 'Configuració',
         connectedAccounts: 'Comptes connectats',
@@ -753,6 +762,7 @@ export const ca: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: 'Autentica el terminal',
         pasteUrlFromTerminal: 'Enganxa l\'URL d\'autenticació del teu terminal',
+        pasteUrlFromDevice: 'Enganxa l\'URL d\'autenticació de l\'altre dispositiu',
         deviceLinkedSuccessfully: 'Dispositiu enllaçat amb èxit',
         terminalConnectedSuccessfully: 'Terminal connectat amb èxit',
         invalidAuthUrl: 'URL d\'autenticació no vàlida',

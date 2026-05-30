@@ -6,6 +6,7 @@ import { decodeBase64 } from '@/encryption/base64';
 import { encryptBox } from '@/encryption/libsodium';
 import { authAccountApprove } from '@/auth/authAccountApprove';
 import { useCheckScannerPermissions } from '@/hooks/useCheckCameraPermissions';
+import { useScannerLauncher } from '@/hooks/useScannerLauncher';
 import { Modal } from '@/modal';
 import { t } from '@/text';
 
@@ -18,6 +19,7 @@ export function useConnectAccount(options?: UseConnectAccountOptions) {
     const auth = useAuth();
     const [isLoading, setIsLoading] = React.useState(false);
     const checkScannerPermissions = useCheckScannerPermissions();
+    const launchScanner = useScannerLauncher('account');
 
     const processAuthUrl = React.useCallback(async (url: string) => {
         if (!url.startsWith('happy:///account?')) {
@@ -51,14 +53,11 @@ export function useConnectAccount(options?: UseConnectAccountOptions) {
 
     const connectAccount = React.useCallback(async () => {
         if (await checkScannerPermissions()) {
-            // Use camera scanner
-            CameraView.launchScanner({
-                barcodeTypes: ['qr']
-            });
+            await launchScanner();
         } else {
             Modal.alert(t('common.error'), t('modals.cameraPermissionsRequiredToScanQr'), [{ text: t('common.ok') }]);
         }
-    }, [checkScannerPermissions]);
+    }, [checkScannerPermissions, launchScanner]);
 
     const connectWithUrl = React.useCallback(async (url: string) => {
         return await processAuthUrl(url);

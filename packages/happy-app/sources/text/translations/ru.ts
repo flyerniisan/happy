@@ -80,6 +80,15 @@ export const ru: TranslationStructure = {
         enterUrlManually: 'Ввести URL вручную',
     },
 
+    scanner: {
+        terminalSubtitle: 'Scan the QR code shown in your terminal to authenticate this device.',
+        centerQrCode: 'Place the QR code inside the frame.',
+        requestingCameraPermission: 'Requesting camera permission...',
+        cameraPermissionRequired: 'Camera permission required',
+        cameraPermissionDescription: 'Allow camera access so Happy can scan the QR code on this device.',
+        grantCameraAccess: 'Grant camera access',
+    },
+
     settings: {
         title: 'Настройки',
         connectedAccounts: 'Подключенные аккаунты',
@@ -757,6 +766,7 @@ export const ru: TranslationStructure = {
         // Used across connect flows and settings
         authenticateTerminal: 'Авторизация терминала',
         pasteUrlFromTerminal: 'Вставьте URL авторизации из вашего терминала',
+        pasteUrlFromDevice: 'Вставьте URL авторизации с другого устройства',
         deviceLinkedSuccessfully: 'Устройство успешно связано',
         terminalConnectedSuccessfully: 'Терминал успешно подключен',
         invalidAuthUrl: 'Неверный URL авторизации',

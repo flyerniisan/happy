@@ -136,6 +136,13 @@ export default function RootLayout() {
                 }}
             />
             <Stack.Screen
+                name="scanner"
+                options={{
+                    headerShown: true,
+                    headerBackTitle: t('common.back'),
+                }}
+            />
+            <Stack.Screen
                 name="restore/index"
                 options={{
                     headerShown: true,
