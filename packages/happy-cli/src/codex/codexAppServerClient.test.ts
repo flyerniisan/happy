@@ -52,6 +52,14 @@ function pushJsonLine(stdout: NodeJS.ReadableStream & { push: (chunk: string) =>
     stdout.push(JSON.stringify(payload) + '\n');
 }
 
+function restoreEnvVar(key: 'RUST_LOG' | 'NO_PROXY' | 'no_proxy', value: string | undefined) {
+    if (value === undefined) {
+        delete process.env[key];
+        return;
+    }
+    process.env[key] = value;
+}
+
 // Mock child process with stdin/stdout/stderr
 function createMockProcess(opts?: {
     pid?: number;
@@ -114,10 +122,14 @@ const sandboxConfig: SandboxConfig = {
 
 describe('CodexAppServerClient sandbox integration', () => {
     const originalRustLog = process.env.RUST_LOG;
+    const originalNoProxy = process.env.NO_PROXY;
+    const originalNoProxyLower = process.env.no_proxy;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        process.env.RUST_LOG = originalRustLog;
+        restoreEnvVar('RUST_LOG', originalRustLog);
+        restoreEnvVar('NO_PROXY', originalNoProxy);
+        restoreEnvVar('no_proxy', originalNoProxyLower);
         mockExecSync.mockReturnValue('codex-cli 0.107.0');
         mockInitializeSandbox.mockResolvedValue(mockSandboxCleanup);
         mockWrapForMcpTransport.mockResolvedValue({ command: 'sh', args: ['-c', 'wrapped codex app-server'] });
@@ -125,7 +137,9 @@ describe('CodexAppServerClient sandbox integration', () => {
     });
 
     afterAll(() => {
-        process.env.RUST_LOG = originalRustLog;
+        restoreEnvVar('RUST_LOG', originalRustLog);
+        restoreEnvVar('NO_PROXY', originalNoProxy);
+        restoreEnvVar('no_proxy', originalNoProxyLower);
     });
 
     it('reports goal action support for Codex versions with goal action requests', async () => {
@@ -145,19 +159,36 @@ describe('CodexAppServerClient sandbox integration', () => {
 
         await client.connect();
 
-        expect(mockInitializeSandbox).toHaveBeenCalledWith(sandboxConfig, process.cwd());
-        expect(mockWrapForMcpTransport).toHaveBeenCalledWith('codex', ['app-server', '--listen', 'stdio://']);
-        expect(mockSpawn).toHaveBeenCalledWith(
-            'sh',
-            ['-c', 'wrapped codex app-server'],
-            expect.objectContaining({
-                env: expect.objectContaining({
-                    CODEX_SANDBOX: 'seatbelt',
-                    RUST_LOG: expect.stringContaining('codex_core::rollout::list=off'),
+        if (process.platform === 'win32') {
+            expect(mockInitializeSandbox).not.toHaveBeenCalled();
+            expect(mockWrapForMcpTransport).not.toHaveBeenCalled();
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'codex',
+                ['app-server', '--listen', 'stdio://'],
+                expect.objectContaining({
+                    env: expect.objectContaining({
+                        RUST_LOG: expect.stringContaining('codex_core::rollout::list=off'),
+                    }),
                 }),
-            }),
-        );
-        expect(client.sandboxEnabled).toBe(true);
+            );
+            const spawnEnv = mockSpawn.mock.calls[0]?.[2]?.env as Record<string, string | undefined>;
+            expect(spawnEnv.CODEX_SANDBOX).toBeUndefined();
+            expect(client.sandboxEnabled).toBe(false);
+        } else {
+            expect(mockInitializeSandbox).toHaveBeenCalledWith(sandboxConfig, process.cwd());
+            expect(mockWrapForMcpTransport).toHaveBeenCalledWith('codex', ['app-server', '--listen', 'stdio://']);
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'sh',
+                ['-c', 'wrapped codex app-server'],
+                expect.objectContaining({
+                    env: expect.objectContaining({
+                        CODEX_SANDBOX: 'seatbelt',
+                        RUST_LOG: expect.stringContaining('codex_core::rollout::list=off'),
+                    }),
+                }),
+            );
+            expect(client.sandboxEnabled).toBe(true);
+        }
 
         await client.disconnect();
     });
@@ -191,7 +222,7 @@ describe('CodexAppServerClient sandbox integration', () => {
         await client.connect();
         await client.disconnect();
 
-        expect(mockSandboxCleanup).toHaveBeenCalledTimes(1);
+        expect(mockSandboxCleanup).toHaveBeenCalledTimes(process.platform === 'win32' ? 0 : 1);
         expect(client.sandboxEnabled).toBe(false);
     });
 
@@ -211,6 +242,38 @@ describe('CodexAppServerClient sandbox integration', () => {
                 }),
             }),
         );
+
+        await client.disconnect();
+    });
+
+    it('adds loopback hosts to NO_PROXY for the codex app-server process', async () => {
+        delete process.env.NO_PROXY;
+        delete process.env.no_proxy;
+
+        const { CodexAppServerClient } = await import('./codexAppServerClient');
+        const client = new CodexAppServerClient();
+
+        await client.connect();
+
+        const spawnEnv = mockSpawn.mock.calls[0]?.[2]?.env as Record<string, string | undefined>;
+        expect(spawnEnv.NO_PROXY).toBe('127.0.0.1,localhost,::1');
+        expect(spawnEnv.no_proxy).toBe('127.0.0.1,localhost,::1');
+
+        await client.disconnect();
+    });
+
+    it('appends missing loopback hosts to an existing NO_PROXY value', async () => {
+        process.env.NO_PROXY = 'internal.corp';
+        process.env.no_proxy = 'internal.corp';
+
+        const { CodexAppServerClient } = await import('./codexAppServerClient');
+        const client = new CodexAppServerClient();
+
+        await client.connect();
+
+        const spawnEnv = mockSpawn.mock.calls[0]?.[2]?.env as Record<string, string | undefined>;
+        expect(spawnEnv.NO_PROXY).toBe('internal.corp,127.0.0.1,localhost,::1');
+        expect(spawnEnv.no_proxy).toBe('internal.corp,127.0.0.1,localhost,::1');
 
         await client.disconnect();
     });

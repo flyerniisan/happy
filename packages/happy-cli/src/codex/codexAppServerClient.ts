@@ -50,6 +50,7 @@ import type {
 import type { SandboxConfig } from '@/persistence';
 import { initializeSandbox, wrapForMcpTransport } from '@/sandbox/manager';
 import packageJson from '../../package.json';
+import { ensureLocalProxyBypass } from '@/claude/utils/proxyBypass';
 
 type PendingRequest = {
     resolve: (result: unknown) => void;
@@ -528,6 +529,9 @@ export class CodexAppServerClient {
         for (const [key, value] of Object.entries(process.env)) {
             if (typeof value === 'string') env[key] = value;
         }
+        // Codex sessions can spawn loopback-only Happy MCP bridges later, so make
+        // sure localhost traffic is never routed through a user-configured proxy.
+        ensureLocalProxyBypass(env);
         // Mute noisy rollout list logging
         const filter = 'codex_core::rollout::list=off';
         if (!env.RUST_LOG) {
